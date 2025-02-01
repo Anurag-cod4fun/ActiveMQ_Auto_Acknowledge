@@ -8,22 +8,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-@Component
-public class ActiveMQConsumer implements MessageListener {
 
-    private static final Logger logger = LoggerFactory.getLogger(ActiveMQConsumer.class);
+public class ActiveMQConsumer implements MessageListener {
 
     @Override
     public void onMessage(Message message) {
         try {
             if (message instanceof TextMessage) {
-                String text = ((TextMessage) message).getText();
-                logger.info("Received message: {}", message);
+                TextMessage textMessage = (TextMessage) message;
+                System.out.println("Received: " + textMessage.getText());
             } else {
-                logger.warn("Received non-text message: {}", message);
+                System.out.println("Received non-text message");
             }
         } catch (JMSException e) {
-            logger.error("Error processing message", e);
+            e.printStackTrace();
         }
     }
 }
+

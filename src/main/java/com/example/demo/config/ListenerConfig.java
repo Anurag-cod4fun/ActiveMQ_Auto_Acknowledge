@@ -2,7 +2,7 @@ package com.example.demo.config;
 
 import jakarta.jms.*;
 
-import org.springframework.context.annotation.Bean;
+import org.apache.activemq.ActiveMQConnectionFactory;
 import org.springframework.context.annotation.Configuration;
 
 import com.example.demo.consumer.ActiveMQConsumer;
@@ -10,17 +10,36 @@ import com.example.demo.consumer.ActiveMQConsumer;
 @Configuration
 public class ListenerConfig {
 
-    @Bean
-    public MessageConsumer registerListener(ConnectionFactory connectionFactory) throws JMSException {
-        Connection connection = connectionFactory.createConnection();
-        connection.start();
+    private static final String BROKER_URL = "tcp://localhost:61616";
+    private static final String QUEUE_NAME = "test-queue";
 
-        Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-        Queue queue = session.createQueue("test-queue");
-        MessageConsumer consumer = session.createConsumer(queue);
+    private ConnectionFactory connectionFactory;
+    private Connection connection;
+    private Session session;
+    private Queue queue;
+    private MessageConsumer consumer;
 
-        consumer.setMessageListener(new ActiveMQConsumer());
+    public ListenerConfig() {
+        try {
+            // Create Connection Factory
+            connectionFactory = new ActiveMQConnectionFactory(BROKER_URL);
 
-        return consumer; // Return the consumer as a bean
+            // Create Connection
+            connection = connectionFactory.createConnection();
+            connection.start();
+
+            // Create Session
+            session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            queue = session.createQueue(QUEUE_NAME);
+
+            // Create Consumer
+            consumer = session.createConsumer(queue);
+            consumer.setMessageListener(new ActiveMQConsumer());
+
+            System.out.println("ActiveMQ Consumer is listening...");
+
+        } catch (JMSException e) {
+            e.printStackTrace();
+        }
     }
 }
