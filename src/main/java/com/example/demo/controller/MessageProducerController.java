@@ -1,43 +1,39 @@
 package com.example.demo.controller;
 
 import jakarta.jms.*;
-import org.apache.activemq.ActiveMQConnectionFactory;
+import com.example.demo.config.ActiveMQConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/producer")
 public class MessageProducerController {
 
-    private static final String BROKER_URL = "tcp://localhost:61616";
-    private static final String QUEUE_NAME = "test-queue";
+    private static final Logger logger = LoggerFactory.getLogger(MessageProducerController.class);
+    private final ActiveMQConfig activeMQConfig;
+
+    public MessageProducerController(ActiveMQConfig activeMQConfig) {
+        this.activeMQConfig = activeMQConfig;
+    }
 
     @PostMapping("/send")
     public String sendMessage(@RequestParam String message) {
+        logger.info("Producer: Sending message...");
+
         try {
-            // Create Connection Factory
-            ConnectionFactory connectionFactory = new ActiveMQConnectionFactory(BROKER_URL);
-            Connection connection = connectionFactory.createConnection();
-            connection.start();
+            // Use existing session and producer
+            Session session = activeMQConfig.getSession();
+            MessageProducer producer = activeMQConfig.getProducer();
 
-            // Create Session
-            Session session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-            Queue queue = session.createQueue(QUEUE_NAME);
-
-            // Create Producer & Message
-            MessageProducer producer = session.createProducer(queue);
+            // Create and send message
             TextMessage textMessage = session.createTextMessage(message);
-
-            // Send Message
             producer.send(textMessage);
-
-            // Clean up
-            producer.close();
-            session.close();
-            connection.close();
+            logger.info("Producer: Message sent: {}", message);
 
             return "Message sent: " + message;
         } catch (JMSException e) {
-            e.printStackTrace();
+            logger.error("Producer: Error sending message", e);
             return "Failed to send message";
         }
     }

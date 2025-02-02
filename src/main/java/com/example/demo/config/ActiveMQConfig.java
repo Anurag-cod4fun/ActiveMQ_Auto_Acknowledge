@@ -1,32 +1,59 @@
 package com.example.demo.config;
 
-import jakarta.jms.ConnectionFactory;
+import jakarta.jms.*;
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.springframework.context.annotation.Bean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jms.core.JmsTemplate;
-
-import java.util.Arrays;
 
 @Configuration
 public class ActiveMQConfig {
 
-    private static final String BROKER_URL = "tcp://localhost:61616"; // Change if needed
-    private static final String BROKER_USERNAME = "admin"; // Default ActiveMQ username
-    private static final String BROKER_PASSWORD = "admin"; // Default ActiveMQ password
+    private static final Logger logger = LoggerFactory.getLogger(ActiveMQConfig.class);
+    private static final String BROKER_URL = "tcp://localhost:61616";
+    private static final String QUEUE_NAME = "test-queue";
 
-    @Bean
-    public ConnectionFactory connectionFactory() {
-        ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(BROKER_USERNAME, BROKER_PASSWORD, BROKER_URL);
-        factory.setTrustedPackages(Arrays.asList("com.example.demo")); 
-        return factory;
+    private Connection connection;
+    private Session session;
+    private Queue queue;
+    private MessageProducer producer;
+
+    public ActiveMQConfig() {
+        try {
+            logger.info("ActiveMQConfig: Initializing ActiveMQ persistent connection...");
+
+            // Create Connection Factory
+            ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(BROKER_URL);
+
+            // Create a SINGLE connection that remains active
+            connection = connectionFactory.createConnection();
+            connection.start();
+            logger.info("ActiveMQConfig: Connection established successfully.");
+
+            // Create a single session
+            session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+            queue = session.createQueue(QUEUE_NAME);
+            logger.info("ActiveMQConfig: Queue '{}' initialized.", QUEUE_NAME);
+
+            // Create a SINGLE producer that stays active
+            producer = session.createProducer(queue);
+            producer.setDeliveryMode(DeliveryMode.PERSISTENT); // Ensures messages are persistent
+            logger.info("ActiveMQConfig: Persistent MessageProducer created.");
+
+        } catch (JMSException e) {
+            logger.error("ActiveMQConfig: Error initializing ActiveMQ", e);
+        }
     }
 
-    @Bean
-    public JmsTemplate jmsTemplate(ConnectionFactory connectionFactory) {
-        JmsTemplate jmsTemplate = new JmsTemplate(connectionFactory);
-        jmsTemplate.setSessionAcknowledgeMode(1); // AUTO_ACKNOWLEDGE
-        return jmsTemplate;
+    public Session getSession() {
+        return session;
+    }
+
+    public MessageProducer getProducer() {
+        return producer;
+    }
+
+    public Queue getQueue() {
+        return queue;
     }
 }
-

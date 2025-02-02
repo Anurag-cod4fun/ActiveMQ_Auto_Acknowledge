@@ -1,45 +1,35 @@
 package com.example.demo.config;
 
 import jakarta.jms.*;
-
-import org.apache.activemq.ActiveMQConnectionFactory;
-import org.springframework.context.annotation.Configuration;
-
 import com.example.demo.consumer.ActiveMQConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ListenerConfig {
 
-    private static final String BROKER_URL = "tcp://localhost:61616";
-    private static final String QUEUE_NAME = "test-queue";
+    private static final Logger logger = LoggerFactory.getLogger(ListenerConfig.class);
+    private final ActiveMQConfig activeMQConfig;
 
-    private ConnectionFactory connectionFactory;
-    private Connection connection;
-    private Session session;
-    private Queue queue;
-    private MessageConsumer consumer;
+    public ListenerConfig(ActiveMQConfig activeMQConfig) {
+        this.activeMQConfig = activeMQConfig;
+        initializeConsumer();
+    }
 
-    public ListenerConfig() {
+    private void initializeConsumer() {
         try {
-            // Create Connection Factory
-            connectionFactory = new ActiveMQConnectionFactory(BROKER_URL);
+            logger.info("ListenerConfig: Initializing ActiveMQ consumer...");
+            Session session = activeMQConfig.getSession();
+            Queue queue = activeMQConfig.getQueue();
 
-            // Create Connection
-            connection = connectionFactory.createConnection();
-            connection.start();
+            ActiveMQConsumer consumer = new ActiveMQConsumer(session, queue);
+            Thread consumerThread = new Thread(consumer);
+            consumerThread.start();
 
-            // Create Session
-            session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-            queue = session.createQueue(QUEUE_NAME);
-
-            // Create Consumer
-            consumer = session.createConsumer(queue);
-            consumer.setMessageListener(new ActiveMQConsumer());
-
-            System.out.println("ActiveMQ Consumer is listening...");
-
+            logger.info("ListenerConfig: Consumer started successfully.");
         } catch (JMSException e) {
-            e.printStackTrace();
+            logger.error("ListenerConfig: Error initializing consumer", e);
         }
     }
 }
